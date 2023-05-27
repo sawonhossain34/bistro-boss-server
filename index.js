@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, BulkOperationBase } = require('mongodb');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 
@@ -30,16 +30,24 @@ async function run() {
 
     const menuCollection = client.db("bistroDb").collection("menu");
     const reviewsCollection = client.db("bistroDb").collection("reviews");
+    const cartCollection = client.db("bistroDb").collection("carts");
 
-    app.get('/menu', async(req,res) => {
-        const result = await menuCollection.find().toArray();
-        res.send(result);
+    app.get('/menu', async (req, res) => {
+      const result = await menuCollection.find().toArray();
+      res.send(result);
     })
-    app.get('/reviews', async(req,res) => {
-        const result = await reviewsCollection.find().toArray();
-        res.send(result);
+    app.get('/reviews', async (req, res) => {
+      const result = await reviewsCollection.find().toArray();
+      res.send(result);
     })
-    
+
+    // cart operation
+    app.post('carts', async (req, res) => {
+      const item = req.body;
+      const result = await cartCollection.insertOne(item);
+      res.send(result);
+    })
+
 
 
 
@@ -55,10 +63,10 @@ async function run() {
 run().catch(console.dir);
 
 
-app.get( '/' , (req,res) => {
-    res.send('boss is setting')
+app.get('/', (req, res) => {
+  res.send('boss is setting')
 })
 
-app.listen( port , () => {
-    console.log(`bistro boss running on port :${port}`)
+app.listen(port, () => {
+  console.log(`bistro boss running on port :${port}`)
 })
