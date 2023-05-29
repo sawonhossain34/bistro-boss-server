@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, BulkOperationBase, ObjectId } = require('mongodb');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
@@ -58,9 +59,11 @@ async function run() {
       const filter = {_id: new ObjectId(id)};
       const updateDoc = {
         $set: {
-          plot: `A harvest of random numbers, such as: ${Math.random()}`
+          role : 'admin' 
         },
       }; 
+      const result = await usersCollection.updateOne(filter,updateDoc);
+      res.send(result);
     })
 
 
