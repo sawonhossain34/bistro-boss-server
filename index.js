@@ -10,6 +10,23 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+const varifyJWT = (req,res,next) => {
+  const authorization = req.headers.authorization;
+  if(!authorization){
+    return res.status(401).send({error:true, massage:'unauthorized access'})
+  }
+
+  // berear token
+  const token = authorization.split(' ')[1];
+  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET, (err,decoded) => {
+    if(err){
+      return res.status(401).send({error: true, massage:'unautrorized access'})
+    }
+    req.decoded = decoded;
+    next();
+  })
+}
+
 
 
 
@@ -33,6 +50,15 @@ async function run() {
     const menuCollection = client.db("bistroDb").collection("menu");
     const reviewsCollection = client.db("bistroDb").collection("reviews");
     const cartCollection = client.db("bistroDb").collection("carts");
+
+// jwt token secret
+    app.post('/jwt',(req,res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET,{ expiresIn: '1h' })
+
+      res.send({token});
+    })
+    
 
     // users related apis
     app.get('/users',async(req,res) => {
@@ -80,11 +106,18 @@ async function run() {
     })
 
     // cart operation api
-    app.get('/carts', async (req,res) => {
+    app.get('/carts',varifyJWT, async (req,res) => {
       const email = req.query.email;
       if(!email){
         res.send([]);
       }
+
+      const decodedEmail = req.decoded.email;
+      if(email !== decodedEmail){
+        return res.status(403).send({error: true, massage:'forbiden access'})
+      }
+
+
       else{
         const query = { email : email };
         const result = await cartCollection.find(query).toArray();
