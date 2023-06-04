@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion, BulkOperationBase, ObjectId } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000;
@@ -51,13 +51,14 @@ async function run() {
     const menuCollection = client.db("bistroDb").collection("menu");
     const reviewsCollection = client.db("bistroDb").collection("reviews");
     const cartCollection = client.db("bistroDb").collection("carts");
+    const paymentCollection = client.db("bistroDb").collection("payments");
 
 // jwt token secret
     app.post('/jwt',(req,res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET,{ expiresIn: '1h' })
 
-      res.send({token});
+      res.send({token})
     })
     // Warning : use verifyJWT before using verifyAdmin
     const verifyAdmin = async(req,res,next) => {
@@ -184,7 +185,7 @@ async function run() {
     })
 
     // create payment intent//
-    app.post('/create-payment-intent', async(req,res) => {
+    app.post('/create-payment-intent',varifyJWT, async(req,res) => {
       const {price} = req.body;
       const amount = price*100;
       const paymentIntent = await stripe.paymentIntents.create({
@@ -195,6 +196,16 @@ async function run() {
       res.send({
         clientSecret: paymentIntent.client_secret
       })
+    })
+
+    // payment related api
+    app.post('/payments',varifyJWT, async(req,res) => {
+       const payment = req.body;
+       const insertResult = await paymentCollection.insertOne(payment);
+
+       const query ={_id: {$in:payment.cartItems.map(id => new ObjectId(id))}};
+       const deleteResult = await cartCollection.deleteMany(query);
+       res.send({insertResult,deleteResult});
     })
 
 
