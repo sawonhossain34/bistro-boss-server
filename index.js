@@ -11,17 +11,17 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-const varifyJWT = (req,res,next) => {
+const varifyJWT = (req, res, next) => {
   const authorization = req.headers.authorization;
-  if(!authorization){
-    return res.status(401).send({error:true, massage:'unauthorized access'})
+  if (!authorization) {
+    return res.status(401).send({ error: true, massage: 'unauthorized access' })
   }
 
   // berear token
   const token = authorization.split(' ')[1];
-  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET, (err,decoded) => {
-    if(err){
-      return res.status(401).send({error: true, massage:'unautrorized access'})
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ error: true, massage: 'unautrorized access' })
     }
     req.decoded = decoded;
     next();
@@ -53,43 +53,43 @@ async function run() {
     const cartCollection = client.db("bistroDb").collection("carts");
     const paymentCollection = client.db("bistroDb").collection("payments");
 
-// jwt token secret
-    app.post('/jwt',(req,res) => {
+    // jwt token secret
+    app.post('/jwt', (req, res) => {
       const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET,{ expiresIn: '1h' })
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
 
-      res.send({token})
+      res.send({ token })
     })
     // Warning : use verifyJWT before using verifyAdmin
-    const verifyAdmin = async(req,res,next) => {
+    const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
-      const query = {email:email}
-      const user =await usersCollection.findOne(query);
-      if(user?.role !== 'admin'){
-        return res.status(403).send({error:true, message: 'forbidden message'});
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== 'admin') {
+        return res.status(403).send({ error: true, message: 'forbidden message' });
       }
       next();
     }
-    
-/**
- * 0 do not show secure links to those who should not see the links.
- * 1 use jwt token : verifyJWT
- */
+
+    /**
+     * 0 do not show secure links to those who should not see the links.
+     * 1 use jwt token : verifyJWT
+     */
     // users related apis
-    app.get('/users',varifyJWT, verifyAdmin,async(req,res) => {
+    app.get('/users', varifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     })
 
 
-    app.post('/users', async(req,res) => {
+    app.post('/users', async (req, res) => {
       const user = req.body;
-      const query = {email:user.email};
+      const query = { email: user.email };
 
       const existringUser = await usersCollection.findOne(query);
 
-      if(existringUser){
-        return res.send({message : 'user already exists'})
+      if (existringUser) {
+        return res.send({ message: 'user already exists' })
       }
       const result = await usersCollection.insertOne(user);
       res.send(result);
@@ -98,29 +98,29 @@ async function run() {
     // security layer :varifyJWT
     // email same
     // cheack admin
-    app.get('/users/admin/:email',varifyJWT, async(req,res) => {
+    app.get('/users/admin/:email', varifyJWT, async (req, res) => {
       const email = req.params.email;
 
-      if(req.decoded.email !== email){
-        req.send({admin : false})
+      if (req.decoded.email !== email) {
+        req.send({ admin: false })
       }
 
 
-      const query = {email:email};
+      const query = { email: email };
       const user = await usersCollection.findOne(query);
-      const result = {admin:user?.role === 'admin'};
+      const result = { admin: user?.role === 'admin' };
       res.send(result);
     })
 
-    app.patch('/users/admin/:id',async(req,res) => {
+    app.patch('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
+      const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
-          role : 'admin' 
+          role: 'admin'
         },
-      }; 
-      const result = await usersCollection.updateOne(filter,updateDoc);
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
       res.send(result);
     })
 
@@ -131,15 +131,15 @@ async function run() {
       res.send(result);
     })
 
-    app.post('/menu',varifyJWT,verifyAdmin,async(req,res) => {
+    app.post('/menu', varifyJWT, verifyAdmin, async (req, res) => {
       const newItem = req.body;
       const result = await menuCollection.insertOne(newItem);
       res.send(result);
     })
 
-    app.delete('/menu/:id',varifyJWT,verifyAdmin,async(req,res) => {
+    app.delete('/menu/:id', varifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
-      const query ={_id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const result = await menuCollection.deleteOne(query);
       res.send(result)
     })
@@ -151,20 +151,20 @@ async function run() {
     })
 
     // cart operation api
-    app.get('/carts',varifyJWT, async (req,res) => {
+    app.get('/carts', varifyJWT, async (req, res) => {
       const email = req.query.email;
-      if(!email){
+      if (!email) {
         res.send([]);
       }
 
       const decodedEmail = req.decoded.email;
-      if(email !== decodedEmail){
-        return res.status(403).send({error: true, massage:'forbiden access'})
+      if (email !== decodedEmail) {
+        return res.status(403).send({ error: true, massage: 'forbiden access' })
       }
 
 
-      else{
-        const query = { email : email };
+      else {
+        const query = { email: email };
         const result = await cartCollection.find(query).toArray();
         res.send(result);
       }
@@ -177,21 +177,21 @@ async function run() {
       res.send(result);
     })
 
-    app.delete('/carts/:id', async (req,res) => {
+    app.delete('/carts/:id', async (req, res) => {
       const id = req.params.id;
-      const query = {_id : new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await cartCollection.deleteOne(query);
       res.send(result);
     })
 
     // create payment intent//
-    app.post('/create-payment-intent',varifyJWT, async(req,res) => {
-      const {price} = req.body;
-      const amount = price*100;
+    app.post('/create-payment-intent', varifyJWT, async (req, res) => {
+      const { price } = req.body;
+      const amount = price * 100;
       const paymentIntent = await stripe.paymentIntents.create({
-        amount:amount,
-        currency:'usd',
-        payment_method_types:['card']
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
       });
       res.send({
         clientSecret: paymentIntent.client_secret
@@ -199,13 +199,37 @@ async function run() {
     })
 
     // payment related api
-    app.post('/payments',varifyJWT, async(req,res) => {
-       const payment = req.body;
-       const insertResult = await paymentCollection.insertOne(payment);
+    app.post('/payments', varifyJWT, async (req, res) => {
+      const payment = req.body;
+      const insertResult = await paymentCollection.insertOne(payment);
 
-       const query ={_id: {$in:payment.cartItems.map(id => new ObjectId(id))}};
-       const deleteResult = await cartCollection.deleteMany(query);
-       res.send({insertResult,deleteResult});
+      const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } };
+      const deleteResult = await cartCollection.deleteMany(query);
+      res.send({ insertResult, deleteResult });
+    })
+
+    app.get('/admin-stats', varifyJWT,verifyAdmin, async (req, res) => {
+      const users = await usersCollection.estimatedDocumentCount();
+      const products = await menuCollection.estimatedDocumentCount();
+      const orders = await paymentCollection.estimatedDocumentCount();
+
+      // best way to get the price field is to use group and sum operator 
+      /**
+       * collection.aggregate([
+       * {
+       * $group: {
+       * _id:null,
+       * total: {$sum : '$price'}
+       * }
+       * }
+       * ]).toArray()
+       */
+      const payments = await paymentCollection.find().toArray();
+      const revenue = payments.reduce((sum, payment) => sum + payment.price, 0);
+
+      res.send({
+        users, products, orders,revenue
+      })
     })
 
 
